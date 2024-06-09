@@ -24,14 +24,18 @@ class Board:
         self.initialize_walls()
         self.spawn_initial_enemies()
 
-    def initialize_walls(self, wall_density=0.15):
+    def initialize_walls(self, wall_density=0.15, wall_proportion=0.5):
         num_walls = int(ROWS * COLUMNS * wall_density)
         for _ in range(num_walls):
             while True:
                 r = random.randint(0, ROWS - 1)
                 c = random.randint(0, COLUMNS - 1)
                 if self.is_position_safe_for_walls(r, c):
-                    self.field[r][c] = '#'
+                    wall_type=random.randint(1, 100)/100
+                    if wall_type <= wall_proportion:
+                        self.field[r][c] = '#'
+                    else:
+                        self.field[r][c] = '&'
                     break
 
     def is_position_safe_for_walls(self, r, c):
@@ -64,7 +68,7 @@ class Board:
 
     def refresh(self):
         with self.lock:
-            temp_field = [[self.field[r][c] if self.field[r][c] == '#' else " " for c in range(COLUMNS)] for r in range(ROWS)]
+            temp_field = [[self.field[r][c] if self.field[r][c] == '#' or self.field[r][c] == '&' else " " for c in range(COLUMNS)] for r in range(ROWS)]
             r, c = self.player
             temp_field[r][c] = 'B'
             self.bomb_sem.acquire()
@@ -92,7 +96,7 @@ class Board:
             elif new_direction == 4:
                 c -= 1
 
-            if 0 <= r < ROWS and 0 <= c < COLUMNS and self.field[r][c] != '#':
+            if 0 <= r < ROWS and 0 <= c < COLUMNS and self.field[r][c] != '#' and self.field[r][c] != '&':
                 self.player = (r, c)
 
     def place_bomb(self):
@@ -123,15 +127,28 @@ class Board:
 
         with self.lock:
             explosion_positions = [(r, c)]
+            explosion_dir_stop = [0, 0, 0, 0]
             for i in range(1, explosion_range + 1):
-                if r - i >= 0 and self.field[r - i][c] != '*':
-                    explosion_positions.append((r - i, c))
-                if r + i < ROWS and self.field[r + i][c] != '*':
-                    explosion_positions.append((r + i, c))
-                if c - i >= 0 and self.field[r][c - i] != '*':
-                    explosion_positions.append((r, c - i))
-                if c + i < COLUMNS and self.field[r][c + i] != '*':
-                    explosion_positions.append((r, c + i))
+                if r - i >= 0 and self.field[r - i][c] != '*' and explosion_dir_stop[0] == 0:
+                    if self.field[r - i][c] == '#':
+                        explosion_dir_stop[0] = 1
+                    else:
+                        explosion_positions.append((r - i, c))
+                if r + i < ROWS and self.field[r + i][c] != '*' and explosion_dir_stop[1] == 0:
+                    if self.field[r + i][c] == '#':
+                        explosion_dir_stop[1] = 1
+                    else:
+                        explosion_positions.append((r + i, c))
+                if c - i >= 0 and self.field[r][c - i] != '*' and explosion_dir_stop[2] == 0:
+                    if self.field[r][c - i] == '#':
+                        explosion_dir_stop[2] = 1
+                    else:
+                        explosion_positions.append((r, c - i))
+                if c + i < COLUMNS and self.field[r][c + i] != '*' and explosion_dir_stop[3] == 0:
+                    if self.field[r][c + i] == '#':
+                        explosion_dir_stop[0] = 1
+                    else:
+                        explosion_positions.append((r, c + i))
 
             for (er, ec) in explosion_positions:
                 self.explosions[(er, ec)] = time.time() + EXPLOSION_DURATION
