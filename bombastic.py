@@ -4,11 +4,10 @@ import threading
 import random
 from threading import Semaphore
 
-
 COLUMNS = 50
 ROWS = 25
 EXPLOSION_DURATION = 0.5  # Duration to show explosion in seconds
-
+ENEMY_SPAWN_RATE = 5  # In seconds, how often new enemies spawn
 
 class Board:
     def __init__(self):
@@ -17,11 +16,13 @@ class Board:
         self.player = (int(ROWS / 2), int(COLUMNS / 2))
         self.bombs = {}
         self.explosions = {}
+        self.enemies = []
         self.game_over = False
         self.lock = threading.Lock()
         self.bomb_sem = Semaphore(value=1)
+        self.enemy_sem = Semaphore(value=1)
         self.initialize_walls()
-
+        self.spawn_initial_enemies()
 
     def initialize_walls(self, wall_density=0.15):
         num_walls = int(ROWS * COLUMNS * wall_density)
@@ -33,13 +34,24 @@ class Board:
                     self.field[r][c] = '#'
                     break
 
-
     def is_position_safe_for_walls(self, r, c):
         pr, pc = self.player
         if (pr == r and abs(pc - c) <= 1) or (pc == c and abs(pr - r) <= 1):
             return False
         return self.field[r][c] == " "
 
+    def spawn_initial_enemies(self):
+        for _ in range(5):
+            self.spawn_enemy()
+
+    def spawn_enemy(self):
+        with self.enemy_sem:
+            while True:
+                r = random.randint(0, ROWS - 1)
+                c = random.randint(0, COLUMNS - 1)
+                if self.field[r][c] == " ":
+                    self.enemies.append(Enemy(r, c))
+                    break
 
     def __str__(self):
         with self.lock:
@@ -50,7 +62,6 @@ class Board:
             area += "#" * (COLUMNS + 2) + score
             return area
 
-
     def refresh(self):
         with self.lock:
             temp_field = [[self.field[r][c] if self.field[r][c] == '#' else " " for c in range(COLUMNS)] for r in range(ROWS)]
@@ -59,12 +70,15 @@ class Board:
             self.bomb_sem.acquire()
             for (r, c), _ in self.bombs.items():
                 temp_field[r][c] = 'o'
+            self.bomb_sem.release()
+            self.enemy_sem.acquire()
+            for enemy in self.enemies:
+                temp_field[enemy.row][enemy.col] = 'E'
+            self.enemy_sem.release()
             for (r, c), expire_time in self.explosions.items():
                 if time.time() < expire_time:
                     temp_field[r][c] = '*'
-            self.bomb_sem.release()
             self.field = temp_field
-
 
     def move(self, new_direction):
         with self.lock:
@@ -78,10 +92,8 @@ class Board:
             elif new_direction == 4:
                 c -= 1
 
-
             if 0 <= r < ROWS and 0 <= c < COLUMNS and self.field[r][c] != '#':
                 self.player = (r, c)
-
 
     def place_bomb(self):
         with self.lock:
@@ -90,7 +102,6 @@ class Board:
                 self.bomb_sem.acquire()
                 self.bombs[(r, c)] = time.time() + 2  # Bomb explodes after 2 seconds
                 self.bomb_sem.release()
-
 
     def update_bombs_and_explosions(self):
         while not self.game_over:
@@ -106,11 +117,9 @@ class Board:
             self.bomb_sem.release()
             time.sleep(0.1)
 
-
     def explode_bomb(self, position):
         r, c = position
-        explosion_range = 3  # Zasięg eksplozji to 3 kratki w każdym kierunku
-
+        explosion_range = 3  # Explosion range is 3 tiles in each direction
 
         with self.lock:
             explosion_positions = [(r, c)]
@@ -124,12 +133,14 @@ class Board:
                 if c + i < COLUMNS and self.field[r][c + i] != '*':
                     explosion_positions.append((r, c + i))
 
-
             for (er, ec) in explosion_positions:
                 self.explosions[(er, ec)] = time.time() + EXPLOSION_DURATION
                 if (er, ec) == self.player:
                     self.game_over = True
-
+                for enemy in self.enemies:
+                    if (er, ec) == (enemy.row, enemy.col):
+                        self.enemies.remove(enemy)
+                        self.score += 10
 
     def clear_explosions(self):
         while not self.game_over:
@@ -137,6 +148,33 @@ class Board:
                 current_time = time.time()
                 self.explosions = {k: v for k, v in self.explosions.items() if current_time < v}
             time.sleep(0.1)
+
+    def move_enemies(self):
+        while not self.game_over:
+            with self.enemy_sem:
+                for enemy in self.enemies:
+                    enemy.move(self.field)
+            time.sleep(0.5)
+
+    def spawn_enemies(self):
+        while not self.game_over:
+            self.spawn_enemy()
+            time.sleep(ENEMY_SPAWN_RATE)
+
+
+class Enemy:
+    def __init__(self, row, col):
+        self.row = row
+        self.col = col
+
+    def move(self, field):
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        random.shuffle(directions)
+        for dr, dc in directions:
+            nr, nc = self.row + dr, self.col + dc
+            if 0 <= nr < ROWS and 0 <= nc < COLUMNS and field[nr][nc] == " ":
+                self.row, self.col = nr, nc
+                break
 
 
 def controller(window, board):
@@ -162,12 +200,14 @@ def start(window):
     control_thread = threading.Thread(target=controller, args=(window, board))
     bomb_thread = threading.Thread(target=board.update_bombs_and_explosions)
     explosion_clean_thread = threading.Thread(target=board.clear_explosions)
-
+    enemy_move_thread = threading.Thread(target=board.move_enemies)
+    enemy_spawn_thread = threading.Thread(target=board.spawn_enemies)
 
     control_thread.start()
     bomb_thread.start()
     explosion_clean_thread.start()
-
+    enemy_move_thread.start()
+    enemy_spawn_thread.start()
 
     while not board.game_over:
         window.clear()
@@ -178,18 +218,15 @@ def start(window):
         else:
             window.addstr(0, 0, "Window size too small!")
         window.refresh()
-        time.sleep(0.1)
+        time.sleep(0.001)
 
 
     control_thread.join()
     bomb_thread.join()
     explosion_clean_thread.join()
+    enemy_move_thread.join()
+    enemy_spawn_thread.join()
 
 
 if __name__ == "__main__":
     curses.wrapper(start)
-
-
-
-
-
