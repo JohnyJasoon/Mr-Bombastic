@@ -66,6 +66,16 @@ Gra wykorzystuje wielowątkowość do równoległego wykonywania zadań, takich 
 
 Każda z tych funkcjonalności jest obsługiwana przez osobny wątek, co umożliwia płynne działanie gry bez opóźnień i zacięć.
 
+**Koncepcja wyglądu gry**
+
+![bomber](https://github.com/JohnyJasoon/Mr-Bombastic/assets/45130672/738fe2b2-28d2-4cdb-976d-ac86ef7a788e)
+
+- **Pełne kwadraty** - ściany niezniszczalne
+- **Puste kwadraty** - ściany zniszczalne
+- **Okrąg** - gracz
+- **Koło** - przeciwnicy
+- **Gwiazdki** - bomba w trakcie wybuchu
+
 **Uwagi Końcowe**
 
 Gra Bomberman została zaprojektowana tak, aby była prosta do zrozumienia i modyfikowania. Możesz swobodnie eksperymentować z różnymi aspektami gry, takimi jak liczba wrogów, czas trwania eksplozji czy rozmiar planszy. Zachęcamy do dalszego rozwijania i dostosowywania gry według własnych pomysłów i preferencji.
