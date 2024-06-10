@@ -72,8 +72,8 @@ Każda z tych funkcjonalności jest obsługiwana przez osobny wątek, co umożli
 
 - **Pełne kwadraty** - ściany niezniszczalne
 - **Puste kwadraty** - ściany zniszczalne
-- **Okrąg** - gracz
-- **Koło** - przeciwnicy
+- **Koło** - gracz
+- **Okręgi** - przeciwnicy
 - **Gwiazdki** - bomba w trakcie wybuchu
 
 **Uwagi Końcowe**
