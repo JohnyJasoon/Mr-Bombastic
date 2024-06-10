@@ -12,6 +12,7 @@ ENEMY_SPAWN_RATE = 5  # In seconds, how often new enemies spawn
 class Board:
     def __init__(self):
         self.score = 0
+        self.enemy_count = 0
         self.field = [[" " for _ in range(COLUMNS)] for _ in range(ROWS)]
         self.player = (int(ROWS / 2), int(COLUMNS / 2))
         self.bombs = {}
@@ -55,15 +56,18 @@ class Board:
                 c = random.randint(0, COLUMNS - 1)
                 if self.field[r][c] == " ":
                     self.enemies.append(Enemy(r, c))
+                    self.enemy_count+=1
                     break
 
     def __str__(self):
         with self.lock:
             score = f" Score: {self.score} "
+            #time = f" Time: {self.time} up to 180s"
+            enemy_count = f"Enemies: {self.enemy_count}"
             area = "#" * (COLUMNS + 2) + "\n"
             for row in self.field:
                 area += "#" + "".join(row) + "#\n"
-            area += "#" * (COLUMNS + 2) + score
+            area += "#" * (COLUMNS + 2) + score + "|||" + enemy_count
             return area
 
     def refresh(self):
@@ -157,6 +161,7 @@ class Board:
                 for enemy in self.enemies:
                     if (er, ec) == (enemy.row, enemy.col):
                         self.enemies.remove(enemy)
+                        self.enemy_count -= 1
                         self.score += 10
 
     def clear_explosions(self):
