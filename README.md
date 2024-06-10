@@ -42,7 +42,7 @@ Gra Bomberman to klasyczna gra komputerowa, w której gracz porusza się po plan
 
 1. **Uruchomienie Gry**: W katalogu z plikiem gry uruchom:
 ```bash
-  python3 bomberman.py
+  python3 ./bomberman.py
 ```
 1. **Gra uruchomi się w terminalu**, a sterowanie odbywa się za pomocą klawiatury. Gra kończy się, gdy gracz zostanie zniszczony. Aby przerwać grę w dowolnym momencie, zamknij okno terminala.
 
