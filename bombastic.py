@@ -102,6 +102,8 @@ class Board:
 
             if 0 <= r < ROWS and 0 <= c < COLUMNS and self.field[r][c] != '#' and self.field[r][c] != '&':
                 self.player = (r, c)
+            if self.field[r][c] == 'E':
+                self.game_over = True
 
     def place_bomb(self):
         with self.lock:
